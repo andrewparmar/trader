@@ -101,15 +101,15 @@ def main():
 
     # Format and print the output in a neat table
     print("=" * 60)
-    print("{:<35} {:>20}".format("Stock Price (S):", f"${S:.2f}"))
-    print("{:<35} {:>20}".format("Implied Volatility (IV):", f"{IV:.2%}"))
-    print("{:<35} {:>20}".format("Time to Expiration (T):", f"{T} days"))
-    print("{:<35} {:>20}".format(f"{sd_factor} SD Expected Move:", f"±${expected_move:.2f}"))
-    print("{:<35} {:>20}".format("Upper Range:", f"${upper:.2f}"))
-    print("{:<35} {:>20}".format("Lower Range:", f"${lower:.2f}"))
+    print("{:<35} {:>24}".format("Stock Price (S):", f"${S:.2f}"))
+    print("{:<35} {:>24}".format("Implied Volatility (IV):", f"{IV:.2%}"))
+    print("{:<35} {:>24}".format("Time to Expiration (T):", f"{T} days"))
+    print("{:<35} {:>24}".format(f"{sd_factor} SD Expected Move:", f"±${expected_move:.2f}"))
+    print("{:<35} {:>24}".format("Upper Range:", f"${upper:.2f}"))
+    print("{:<35} {:>24}".format("Lower Range:", f"${lower:.2f}"))
     print("=" * 60)
     print()
-    print("{:<10} {:<15} {:<15} {:<20}".format("Option", "STO Strike", "Price", "Premium Potential"))
+    print("{:<10} {:<15} {:<15} {:<20}".format("Option", "STO Strike", "Price", "Premium/Cost"))
     print("-" * 60)
     if sto_strike_call is not None:
         print("{:<10} ${:<14.2f} ${:<14.2f} ${:<20.2f}".format(
