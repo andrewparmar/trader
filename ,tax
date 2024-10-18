@@ -1,0 +1,80 @@
+#!/usr/bin/python3
+
+import argparse
+
+# Federal tax brackets for 2024 (example values, verify for the latest rates)
+FEDERAL_BRACKETS = [
+    (0, 12200, 0.10),    # 10% on income up to $12,200
+    (12200, 29400, 0.12), # 12% on income between $12,200 and $29,400
+    (29400, 75500, 0.22), # 22% on income between $29,400 and $75,500
+    (75500, 161700, 0.24),# 24% on income between $75,500 and $161,700
+    (161700, 204100, 0.32),# 32% on income between $161,700 and $204,100
+    (204100, 510300, 0.35),# 35% on income between $204,100 and $510,300
+    (510300, float('inf'), 0.37) # 37% on income over $510,300
+]
+
+# California tax brackets for 2024 (example values, verify for the latest rates)
+CALIFORNIA_BRACKETS = [
+    (0, 10500, 0.01),    # 1% on income up to $10,500
+    (10500, 25000, 0.02), # 2% on income between $10,500 and $25,000
+    (25000, 35000, 0.04), # 4% on income between $25,000 and $35,000
+    (35000, 45000, 0.06), # 6% on income between $35,000 and $45,000
+    (45000, 55000, 0.08), # 8% on income between $45,000 and $55,000
+    (55000, float('inf'), 0.093) # 9.3% on income over $55,000
+]
+
+def calculate_tax(income, brackets):
+    tax = 0
+    for lower, upper, rate in brackets:
+        if income > lower:
+            taxable_income = min(income, upper) - lower
+            tax += taxable_income * rate
+        else:
+            break
+    return tax
+
+def get_tax_bracket(income, brackets):
+    tax = 0
+    for lower, upper, rate in brackets:
+        if lower < income < upper:
+            return rate
+
+def main():
+    parser = argparse.ArgumentParser(description='Calculate tax based on income and options trading profits.')
+    parser.add_argument('income', type=float, help='Your total income')
+    parser.add_argument('profits', type=float, help='Your profits from options trading')
+
+    args = parser.parse_args()
+
+    income = args.income
+    profits = args.profits
+
+    total_income = income + profits
+
+    federal_tax = calculate_tax(total_income, FEDERAL_BRACKETS)
+    california_tax = calculate_tax(total_income, CALIFORNIA_BRACKETS)
+
+    federal_rate = get_tax_bracket(total_income, FEDERAL_BRACKETS)
+    california_rate = get_tax_bracket(total_income, CALIFORNIA_BRACKETS)
+    print(f"Fed rate: {federal_rate}")
+    print(f"Cal rate: {california_rate}")
+
+    # Tax on profits only (assuming these are capital gains)
+    capital_gains_tax_rate = 0.15  # Example rate for long-term capital gains
+    capital_gains_tax = profits * federal_rate + profits * california_rate
+
+    # print(f"Total Federal Tax: ${federal_tax:.2f}")
+    # print(f"Total California State Tax: ${california_tax:.2f}")
+    # print(f"Profit\t${profits:.2f}\nTax:\t${capital_gains_tax:.2f}")
+
+    # Define width for alignment
+    width = 7
+
+    # Use string formatting to align dollar signs and decimal points
+    print(f"Gross\t${profits:>{width}.2f}")
+    print(f"Tax:\t${capital_gains_tax:>{width}.2f}")
+    print("-"*16)
+    print(f"Net:\t${profits-capital_gains_tax:>{width}.2f}")
+
+if __name__ == "__main__":
+    main()

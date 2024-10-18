@@ -1,0 +1,16 @@
+#!/bin/bash
+
+# Check if two arguments are supplied
+if [ $# -ne 2 ]; then
+    echo "Usage: $0 price strike"
+    exit 1
+fi
+
+price=$1
+strike=$2
+
+# Calculate the percentage using bc for floating-point arithmetic
+res=$(echo "scale=4; ($strike - $price) / $price * 100" | bc)
+
+# Output the result with a percent sign
+echo "${res}%"

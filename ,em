@@ -1,0 +1,128 @@
+#!/usr/bin/env python3
+
+"""
+Tool for calculating expected move (em) of a stock.
+Takes in standard deviation factor to calculate price range.
+Takes in number of contracts to calculate estimated permium/cost for a position.
+"""
+
+import sys
+import datetime
+import yfinance as yf
+import numpy as np
+import argparse
+
+def main():
+    parser = argparse.ArgumentParser(description='Calculate expected move and option premiums.')
+
+    parser.add_argument('ticker', type=str, help='Stock ticker symbol')
+    parser.add_argument('expiration_date', type=str, help='Option expiration date in YYYY-MM-DD format')
+    parser.add_argument('-s', '--sd_factor', type=float, default=1.0, help='Standard deviation factor (default: 1.0)')
+    parser.add_argument('-n', '--num_contracts', type=int, default=5, help='Number of contracts for premium calculation (default: 5)')
+
+    args = parser.parse_args()
+
+    ticker = args.ticker
+    expiration_date_str = args.expiration_date
+    sd_factor = args.sd_factor
+    num_contracts = args.num_contracts
+
+    # Validate the expiration date format
+    try:
+        expiration_date = datetime.datetime.strptime(expiration_date_str, '%Y-%m-%d').date()
+    except ValueError:
+        print("Invalid expiration date format. Use YYYY-MM-DD.")
+        sys.exit(1)
+
+    # Calculate days to expiration
+    today = datetime.date.today()
+    T = (expiration_date - today).days + 1
+    if T <= 0:
+        print("Expiration date must be in the future.")
+        sys.exit(1)
+
+    # Get the stock data
+    stock = yf.Ticker(ticker)
+    S = stock.info.get('currentPrice')
+    if S is None:
+        print("Could not retrieve stock price.")
+        sys.exit(1)
+
+    # Get the option chain for the expiration date
+    try:
+        options_chain = stock.option_chain(expiration_date_str)
+        calls = options_chain.calls
+        puts = options_chain.puts
+    except Exception as e:
+        print(f"Could not retrieve option chain: {e}")
+        sys.exit(1)
+
+    # Find the ATM call option (strike price closest to S)
+    calls['diff'] = abs(calls['strike'] - S)
+    atm_call = calls.loc[calls['diff'].idxmin()]
+
+    IV = atm_call['impliedVolatility']
+
+    if np.isnan(IV):
+        print("Could not retrieve implied volatility from ATM call option.")
+        # Try getting IV from ATM put option
+        puts['diff'] = abs(puts['strike'] - S)
+        atm_put = puts.loc[puts['diff'].idxmin()]
+        IV = atm_put['impliedVolatility']
+
+        if np.isnan(IV):
+            print("Could not retrieve implied volatility from ATM put option.")
+            sys.exit(1)
+
+    # Calculate expected move
+    expected_move = S * IV * np.sqrt(T / 365) * sd_factor
+    upper = S + expected_move
+    lower = S - expected_move
+
+    # Find the call option to sell (strike price at or above upper range)
+    try:
+        contract_call = calls[calls['strike'] >= upper].iloc[0]
+        sto_strike_call = contract_call['strike']
+        premium_call = contract_call['lastPrice'] * 100 * num_contracts
+    except IndexError:
+        print("No call options found at or above the upper range.")
+        sto_strike_call = None
+        premium_call = None
+
+    # Find the put option to sell (strike price at or below lower range)
+    try:
+        contract_put = puts[puts['strike'] <= lower].iloc[-1]
+        sto_strike_put = contract_put['strike']
+        premium_put = contract_put['lastPrice'] * 100 * num_contracts
+    except IndexError:
+        print("No put options found at or below the lower range.")
+        sto_strike_put = None
+        premium_put = None
+
+    # Format and print the output in a neat table
+    print("=" * 60)
+    print("{:<35} {:>20}".format("Stock Price (S):", f"${S:.2f}"))
+    print("{:<35} {:>20}".format("Implied Volatility (IV):", f"{IV:.2%}"))
+    print("{:<35} {:>20}".format("Time to Expiration (T):", f"{T} days"))
+    print("{:<35} {:>20}".format(f"{sd_factor} SD Expected Move:", f"±${expected_move:.2f}"))
+    print("{:<35} {:>20}".format("Upper Range:", f"${upper:.2f}"))
+    print("{:<35} {:>20}".format("Lower Range:", f"${lower:.2f}"))
+    print("=" * 60)
+    print()
+    print("{:<10} {:<15} {:<15} {:<20}".format("Option", "STO Strike", "Price", "Premium Potential"))
+    print("-" * 60)
+    if sto_strike_call is not None:
+        print("{:<10} ${:<14.2f} ${:<14.2f} ${:<20.2f}".format(
+            "Call", sto_strike_call, contract_call['lastPrice'], premium_call))
+    else:
+        print("{:<10} {:<15}".format("Call", "No suitable option found"))
+
+    if sto_strike_put is not None:
+        print("{:<10} ${:<14.2f} ${:<14.2f} ${:<20.2f}".format(
+            "Put", sto_strike_put, contract_put['lastPrice'], premium_put))
+    else:
+        print("{:<10} {:<15}".format("Put", "No suitable option found"))
+    print()
+
+if __name__ == "__main__":
+    main()
